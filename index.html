@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RiskRadar">
+<meta name="description" content="股市風險偵測系統">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>RiskRadar</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0a0a0f;--bg2:#111118;--bg3:#18181f;--bg4:#1e1e28;
+  --border:#2a2a38;--border2:#353545;
+  --text:#e8e8f0;--text2:#9090a8;--text3:#5a5a70;
+  --green:#22c55e;--green-bg:#0d2818;--green-dim:#166534;
+  --yellow:#eab308;--yellow-bg:#1f1500;--yellow-dim:#854d0e;
+  --orange:#f97316;--orange-bg:#1c0a00;--orange-dim:#9a3412;
+  --red:#ef4444;--red-bg:#1f0808;--red-dim:#991b1b;
+  --critical:#ff4444;--critical-bg:#1a0404;
+  --accent:#7c6fe0;--accent2:#9d91f0;
+  --safe-zone: env(safe-area-inset-bottom, 0px);
+  --font-mono:'DM Mono',monospace;
+  --font-sans:'DM Sans',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:15px;overflow-x:hidden}
+
+/* Layout */
+.app{display:flex;flex-direction:column;min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:calc(70px + var(--safe-zone))}
+
+/* Header */
+.header{position:sticky;top:0;z-index:100;background:rgba(10,10,15,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-mark{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;font-family:var(--font-mono)}
+.logo-name{font-size:16px;font-weight:500;letter-spacing:-0.2px}
+.logo-tag{font-size:10px;color:var(--text3);font-family:var(--font-mono);letter-spacing:0.06em;display:block;margin-top:-1px}
+.header-time{text-align:right}
+.time-val{font-family:var(--font-mono);font-size:11px;color:var(--text3)}
+.refresh-icon{background:none;border:1px solid var(--border2);border-radius:8px;padding:6px 8px;cursor:pointer;font-size:14px;color:var(--text2);transition:all 0.15s;display:flex;align-items:center;gap:4px;margin-left:8px}
+.refresh-icon:active{transform:scale(0.94);border-color:var(--accent);color:var(--accent)}
+
+/* Score hero */
+.score-hero{margin:16px;border-radius:20px;padding:24px 20px;background:var(--bg2);border:1px solid var(--border);position:relative;overflow:hidden}
+.score-hero::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--hero-color,var(--green));border-radius:20px 20px 0 0}
+.score-hero-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+.score-label{font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
+.score-big{font-family:var(--font-mono);font-size:80px;font-weight:500;line-height:0.9;transition:color 0.4s}
+.score-denom{font-size:20px;color:var(--text3);margin-left:2px}
+.score-badge{padding:6px 14px;border-radius:100px;font-size:13px;font-weight:500;margin-top:12px;display:inline-block}
+.score-right{text-align:right}
+.score-advice-label{font-size:11px;color:var(--text3);margin-bottom:4px}
+.position-advice{font-size:12px;color:var(--text2);line-height:1.5;max-width:140px;text-align:right}
+
+/* Gauge */
+.gauge-wrap{margin-top:16px}
+.gauge-labels{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-bottom:5px}
+.gauge-track{height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;position:relative}
+.gauge-zones{position:absolute;inset:0;display:flex}
+.gauge-zone{height:100%;opacity:0.35}
+.gauge-needle{height:100%;border-radius:4px;transition:width 0.8s cubic-bezier(.4,0,.2,1);position:absolute;top:0;left:0}
+.gauge-tick{position:absolute;top:0;height:100%;width:1px;background:rgba(255,255,255,0.15)}
+
+/* Scale legend */
+.scale-legend{display:flex;flex-direction:column;gap:6px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+.scale-row{display:flex;align-items:center;gap:8px}
+.scale-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.scale-range{font-family:var(--font-mono);font-size:11px;width:52px;flex-shrink:0}
+.scale-text{font-size:12px;color:var(--text2)}
+
+/* Cards grid */
+.section-title{padding:0 16px;margin-bottom:8px;font-size:11px;font-weight:500;color:var(--text3);font-family:var(--font-mono);letter-spacing:0.08em;text-transform:uppercase}
+.cat-scroll{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 16px;margin-bottom:16px}
+.cat-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:border-color 0.15s;-webkit-touch-callout:none}
+.cat-card:active{background:var(--bg3);border-color:var(--border2)}
+.cat-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.cat-icon{font-size:16px}
+.cat-score-num{font-family:var(--font-mono);font-size:20px;font-weight:500}
+.cat-name{font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px}
+.cat-desc{font-size:11px;color:var(--text3);line-height:1.4}
+.cat-bar{height:3px;border-radius:2px;margin-top:8px;background:var(--bg4);overflow:hidden}
+.cat-bar-fill{height:100%;border-radius:2px;transition:width 0.6s}
+
+/* Detail sheet */
+.detail-sheet{background:var(--bg2);border:1px solid var(--border);border-radius:20px;margin:0 16px 16px;padding:16px;display:none}
+.detail-sheet.open{display:block}
+.detail-sheet-title{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.close-btn{font-size:18px;color:var(--text3);cursor:pointer;padding:0 4px}
+.ind-list{display:flex;flex-direction:column;gap:8px}
+.ind-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--bg3)}
+.ind-info{flex:1;min-width:0}
+.ind-name-s{font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ind-danger{font-size:10px;color:var(--text3);line-height:1.3}
+.ind-right{text-align:right;flex-shrink:0}
+.ind-val{font-family:var(--font-mono);font-size:14px;font-weight:500}
+.ind-score{font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:1px}
+
+/* Action card */
+.action-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;margin:0 16px 16px;padding:16px}
+.action-risks{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.risk-item{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text2);line-height:1.5}
+.risk-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:5px;background:var(--orange)}
+.position-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.position-cell{background:var(--bg3);border-radius:10px;padding:10px;text-align:center}
+.pos-label{font-size:10px;color:var(--text3);margin-bottom:4px}
+.pos-val{font-size:12px;font-weight:500;color:var(--text);line-height:1.3}
+
+/* Taiwan section */
+.tw-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;margin:0 16px 16px;padding:16px}
+.tw-header{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.tw-score{font-family:var(--font-mono);font-size:13px;margin-left:auto}
+.lamps{display:flex;gap:6px;margin-bottom:14px}
+.lamp{flex:1;border-radius:10px;padding:8px 4px;text-align:center;border:1px solid var(--border);transition:all 0.3s}
+.lamp.on{box-shadow:0 0 14px var(--lc)}
+.lamp-dot{width:12px;height:12px;border-radius:50%;margin:0 auto 4px}
+.lamp-n{font-size:9px;font-weight:500}
+.lamp-s{font-size:8px;color:var(--text3);margin-top:1px}
+.tw-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tw-cell{background:var(--bg3);border-radius:10px;padding:10px}
+.tw-cell-name{font-size:10px;color:var(--text3);margin-bottom:4px}
+.tw-cell-val{font-family:var(--font-mono);font-size:15px;font-weight:500}
+.tw-cell-sub{font-size:10px;color:var(--text3);margin-top:2px}
+
+/* News */
+.news-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;margin:0 16px 16px;padding:16px}
+.news-items{display:flex;flex-direction:column;gap:8px}
+.news-row{display:flex;align-items:flex-start;gap:8px;padding:10px;background:var(--bg3);border-radius:10px}
+.news-bar{width:3px;border-radius:2px;align-self:stretch;flex-shrink:0}
+.news-body{flex:1;min-width:0}
+.news-title-s{font-size:12px;color:var(--text2);line-height:1.4;margin-bottom:4px}
+.news-tags{display:flex;gap:4px;flex-wrap:wrap}
+.news-tag{font-size:10px;padding:1px 5px;background:var(--bg4);border-radius:3px;color:var(--text3)}
+.news-sent{font-family:var(--font-mono);font-size:11px;flex-shrink:0;padding-top:1px}
+
+/* History chart */
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;margin:0 16px 16px;padding:16px}
+.chart-wrap{position:relative;height:100px;margin-top:12px}
+
+/* Bottom nav */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:200;background:rgba(10,10,15,0.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--border);padding:8px 0 calc(8px + var(--safe-zone));display:flex;justify-content:space-around;max-width:480px;margin:0 auto}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 16px;cursor:pointer;color:var(--text3);transition:color 0.15s;font-size:10px}
+.nav-item.active{color:var(--accent2)}
+.nav-icon{font-size:20px;line-height:1}
+
+/* Loading */
+.skeleton{background:var(--bg4);border-radius:10px;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* Spinning refresh */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinning{animation:spin 0.8s linear infinite}
+
+/* Scroll sections (hidden by default for nav) */
+.section-page{display:none}
+.section-page.active{display:block}
+
+.c-g{color:var(--green)}.c-y{color:var(--yellow)}.c-o{color:var(--orange)}.c-r{color:var(--red)}.c-t3{color:var(--text3)}
+
+/* Responsive for tablets */
+@media(min-width:600px){
+  .app{padding:0 16px calc(70px + var(--safe-zone))}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-mark">R</div>
+      <div>
+        <div class="logo-name">RiskRadar</div>
+        <div class="logo-tag">MARKET RISK SYSTEM</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center">
+      <div class="header-time">
+        <div class="time-val" id="updateTime">載入中...</div>
+        <div style="font-size:9px;color:var(--text3);text-align:right;margin-top:1px">上次更新</div>
+      </div>
+      <button class="refresh-icon" id="refreshBtn" onclick="loadData()">
+        <span id="refreshIcon">↻</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Page: 總覽 -->
+  <div class="section-page active" id="page-home">
+
+    <!-- Score Hero -->
+    <div class="score-hero" id="scoreHero">
+      <div class="score-hero-top">
+        <div>
+          <div class="score-label">綜合風險指數</div>
+          <div style="display:flex;align-items:baseline">
+            <div class="score-big c-t3" id="scoreNum">—</div>
+            <div class="score-denom">/100</div>
+          </div>
+          <div class="score-badge" id="scoreBadge" style="background:var(--bg4);color:var(--text3);border:1px solid var(--border)">載入中</div>
+        </div>
+        <div class="score-right">
+          <div class="score-advice-label">倉位建議</div>
+          <div class="position-advice" id="positionAdvice">分析中...</div>
+        </div>
+      </div>
+
+      <!-- Gauge -->
+      <div class="gauge-wrap">
+        <div class="gauge-labels">
+          <span>安全</span><span>低警</span><span>中危</span><span>高危</span><span>極危</span>
+        </div>
+        <div class="gauge-track">
+          <div class="gauge-zones">
+            <div class="gauge-zone" style="width:25%;background:var(--green)"></div>
+            <div class="gauge-zone" style="width:20%;background:var(--yellow)"></div>
+            <div class="gauge-zone" style="width:20%;background:var(--orange)"></div>
+            <div class="gauge-zone" style="width:15%;background:var(--red)"></div>
+            <div class="gauge-zone" style="width:20%;background:var(--critical)"></div>
+          </div>
+          <div class="gauge-needle" id="gaugeNeedle" style="width:0%"></div>
+          <div class="gauge-tick" style="left:25%"></div>
+          <div class="gauge-tick" style="left:45%"></div>
+          <div class="gauge-tick" style="left:65%"></div>
+          <div class="gauge-tick" style="left:80%"></div>
+        </div>
+      </div>
+
+      <!-- Scale legend -->
+      <div class="scale-legend">
+        <div class="scale-row"><div class="scale-dot" style="background:var(--green)"></div><div class="scale-range c-g">0 – 25</div><div class="scale-text">安全，可積極布局或加碼</div></div>
+        <div class="scale-row"><div class="scale-dot" style="background:var(--yellow)"></div><div class="scale-range c-y">26 – 45</div><div class="scale-text">低警，維持部位觀察</div></div>
+        <div class="scale-row"><div class="scale-dot" style="background:var(--orange)"></div><div class="scale-range c-o">46 – 65</div><div class="scale-text">中危，減碼 20–30%</div></div>
+        <div class="scale-row"><div class="scale-dot" style="background:var(--red)"></div><div class="scale-range c-r">66 – 80</div><div class="scale-text">高危，大幅減碼至 30%</div></div>
+        <div class="scale-row"><div class="scale-dot" style="background:var(--critical)"></div><div class="scale-range" style="color:var(--critical)">81 – 100</div><div class="scale-text">極危，考慮清倉持現金</div></div>
+      </div>
+    </div>
+
+    <!-- Operator recommendations -->
+    <div class="section-title">操作建議</div>
+    <div class="action-card">
+      <div class="action-risks" id="actionRisks">
+        <div class="skeleton" style="height:16px;border-radius:4px"></div>
+        <div class="skeleton" style="height:16px;border-radius:4px"></div>
+      </div>
+      <div class="position-grid" id="positionGrid">
+        <div class="position-cell"><div class="pos-label">美股倉位</div><div class="pos-val skeleton" style="height:14px;border-radius:3px"></div></div>
+        <div class="position-cell"><div class="pos-label">台股倉位</div><div class="pos-val skeleton" style="height:14px;border-radius:3px"></div></div>
+        <div class="position-cell"><div class="pos-label">現金配置</div><div class="pos-val skeleton" style="height:14px;border-radius:3px"></div></div>
+      </div>
+    </div>
+
+  </div><!-- /page-home -->
+
+  <!-- Page: 指標 -->
+  <div class="section-page" id="page-indicators">
+
+    <div style="height:12px"></div>
+    <div class="section-title">六大類別評分</div>
+    <div class="cat-scroll" id="catGrid">
+      <div class="skeleton" style="height:120px"></div>
+      <div class="skeleton" style="height:120px"></div>
+      <div class="skeleton" style="height:120px"></div>
+      <div class="skeleton" style="height:120px"></div>
+      <div class="skeleton" style="height:120px"></div>
+      <div class="skeleton" style="height:120px"></div>
+    </div>
+
+    <!-- Detail sheet -->
+    <div class="detail-sheet" id="detailSheet">
+      <div class="detail-sheet-title">
+        <span id="detailTitle">指標細項</span>
+        <span class="close-btn" onclick="closeDetail()">✕</span>
+      </div>
+      <div class="ind-list" id="indList"></div>
+    </div>
+
+  </div>
+
+  <!-- Page: 台股 -->
+  <div class="section-page" id="page-taiwan">
+    <div style="height:12px"></div>
+    <div class="section-title">台股專區</div>
+    <div class="tw-card">
+      <div class="tw-header">
+        <span style="font-size:18px">🇹🇼</span>
+        <span style="font-size:14px;font-weight:500">台股風險指數</span>
+        <span class="tw-score c-t3" id="twRiskNum">—/100</span>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px;font-family:var(--font-mono)">景氣燈號</div>
+      <div class="lamps" id="lamps">
+        <div class="lamp" id="lamp0" style="--lc:#166534"><div class="lamp-dot" style="background:#22c55e"></div><div class="lamp-n c-g">藍燈</div><div class="lamp-s">衰退</div></div>
+        <div class="lamp" id="lamp1" style="--lc:#1d4ed8"><div class="lamp-dot" style="background:#60a5fa"></div><div class="lamp-n c-g" style="color:var(--blue)">黃藍</div><div class="lamp-s">低迷</div></div>
+        <div class="lamp" id="lamp2" style="--lc:#166534"><div class="lamp-dot" style="background:#4ade80"></div><div class="lamp-n c-g">綠燈</div><div class="lamp-s">穩定</div></div>
+        <div class="lamp" id="lamp3" style="--lc:#854d0e"><div class="lamp-dot" style="background:#eab308"></div><div class="lamp-n c-y">黃紅</div><div class="lamp-s">熱絡</div></div>
+        <div class="lamp" id="lamp4" style="--lc:#991b1b"><div class="lamp-dot" style="background:#ef4444"></div><div class="lamp-n c-r">紅燈</div><div class="lamp-s">過熱</div></div>
+      </div>
+      <div class="tw-grid" id="twGrid">
+        <div class="skeleton" style="height:70px"></div>
+        <div class="skeleton" style="height:70px"></div>
+        <div class="skeleton" style="height:70px"></div>
+        <div class="skeleton" style="height:70px"></div>
+        <div class="skeleton" style="height:70px"></div>
+        <div class="skeleton" style="height:70px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: 新聞 -->
+  <div class="section-page" id="page-news">
+    <div style="height:12px"></div>
+    <div class="section-title">地緣政治與新聞風險</div>
+    <div class="news-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:12px;color:var(--text2)">即時新聞情緒監控</div>
+        <div style="font-family:var(--font-mono);font-size:11px" id="newsRiskLabel">風險: —</div>
+      </div>
+      <div class="news-items" id="newsList">
+        <div class="skeleton" style="height:60px"></div>
+        <div class="skeleton" style="height:60px"></div>
+        <div class="skeleton" style="height:60px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page: 趨勢 -->
+  <div class="section-page" id="page-history">
+    <div style="height:12px"></div>
+    <div class="section-title">歷史風險走勢</div>
+    <div class="chart-card">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)">
+        <span>過去 30 天</span><span>高分 = 高風險</span>
+      </div>
+      <div class="chart-wrap"><canvas id="histChart"></canvas></div>
+    </div>
+
+    <!-- Score reference -->
+    <div class="section-title">評分參考手冊</div>
+    <div style="margin:0 16px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:16px">
+      <div style="font-size:12px;color:var(--text2);line-height:1.7">
+        <div style="margin-bottom:10px"><span style="color:var(--green);font-weight:500">0–25 安全期</span>：市場估值合理、基本面健康、流動性充裕。可按計劃積極布局，甚至加碼至目標倉位上限。</div>
+        <div style="margin-bottom:10px"><span style="color:var(--yellow);font-weight:500">26–45 低度警戒</span>：部分指標開始出現偏離，但尚未形成系統性風險。維持部位，設好停損，每週確認一次評分。</div>
+        <div style="margin-bottom:10px"><span style="color:var(--orange);font-weight:500">46–65 中度風險</span>：多個核心指標同時警示，市場出現泡沫化跡象。開始分批減碼 20–30%，移往防禦型資產或現金。</div>
+        <div style="margin-bottom:10px"><span style="color:var(--red);font-weight:500">66–80 高度警戒</span>：殖利率倒掛、信用利差擴張、法人出逃等多重共振。大幅減碼，股票部位降至 30% 以下，持有現金等待。</div>
+        <div><span style="color:var(--critical);font-weight:500">81–100 極端危險</span>：系統性崩潰前兆。考慮清倉，所有部位轉入現金、短債、黃金等避險資產，等待市場正常化。</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- Bottom Navigation -->
+<div class="bottom-nav">
+  <div class="nav-item active" id="nav-home"       onclick="switchPage('home')">      <div class="nav-icon">📊</div><span>總覽</span></div>
+  <div class="nav-item"        id="nav-indicators"  onclick="switchPage('indicators')"><div class="nav-icon">📈</div><span>指標</span></div>
+  <div class="nav-item"        id="nav-taiwan"      onclick="switchPage('taiwan')">    <div class="nav-icon">🇹🇼</div><span>台股</span></div>
+  <div class="nav-item"        id="nav-news"        onclick="switchPage('news')">      <div class="nav-icon">📰</div><span>新聞</span></div>
+  <div class="nav-item"        id="nav-history"     onclick="switchPage('history')">   <div class="nav-icon">📉</div><span>趨勢</span></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ══════════════════════════════
+// CONFIG
+// ══════════════════════════════
+// 如果你把 data/ 放在同一個 GitHub Pages repo，這樣可以取得
+const DATA_URL  = "./data/market_data.json";
+const SCORE_URL = "./data/score.json";
+const HIST_URL  = "./data/score_history.json";
+
+// ══════════════════════════════
+// STATE
+// ══════════════════════════════
+let currentPage = "home";
+let scoreData   = null;
+let marketData  = null;
+let histChart   = null;
+let activeCat   = null;
+
+// ══════════════════════════════
+// SCORING (mirrors Python logic for offline fallback)
+// ══════════════════════════════
+const CATS = [
+  {id:"valuation",  name:"估值指標",  icon:"📈", desc:"市場整體估值", color:"#f97316", w:0.20, inds:[
+    {id:"cape",       name:"Shiller CAPE",    danger:">30警戒/>35極危"},
+    {id:"buffett",    name:"Buffett Indicator",danger:">150% 泡沫化"},
+    {id:"margin_debt",name:"融資年增率",       danger:">60%"},
+  ]},
+  {id:"macro",      name:"總體經濟",  icon:"🌍", desc:"基本面支撐",   color:"#22c55e", w:0.22, inds:[
+    {id:"yield_curve",name:"殖利率倒掛",      danger:"<0bp倒掛警訊"},
+    {id:"sahm",       name:"Sahm Rule",       danger:">0.5衰退確認"},
+    {id:"lei",        name:"LEI月變化",       danger:"連3月下滑"},
+  ]},
+  {id:"credit",     name:"信用流動性",icon:"💳", desc:"金融壓力水位", color:"#7c6fe0", w:0.18, inds:[
+    {id:"hy_spread",  name:"高收益債利差",    danger:">500bps危機"},
+    {id:"vix",        name:"VIX恐慌指數",     danger:">30恐慌"},
+    {id:"gold_week",  name:"黃金週漲幅",      danger:">4%避險升溫"},
+    {id:"copper_1m",  name:"銅價月變化",      danger:"<-5%需求萎縮"},
+  ]},
+  {id:"institution",name:"法人動向",  icon:"🏦", desc:"聰明錢方向",   color:"#60a5fa", w:0.18, inds:[
+    {id:"berkshire_cash",name:"Berkshire現金比",danger:">25%"},
+    {id:"cot_net",       name:"COT大戶淨多單", danger:"快速轉空"},
+  ]},
+  {id:"sentiment",  name:"市場情緒",  icon:"😨", desc:"恐懼與貪婪",   color:"#f472b6", w:0.10, inds:[
+    {id:"fear_greed", name:"Fear & Greed",    danger:">80極端貪婪"},
+    {id:"aaii_bull",  name:"AAII看多比例",    danger:">55%"},
+  ]},
+  {id:"news",       name:"新聞地緣",  icon:"📰", desc:"政策地緣風險", color:"#fb923c", w:0.12, inds:[
+    {id:"news_risk",  name:"新聞風險指數",    danger:">70高危"},
+  ]},
+];
+
+function scoreColor(s) {
+  if (s <= 25) return "var(--green)";
+  if (s <= 45) return "var(--yellow)";
+  if (s <= 65) return "var(--orange)";
+  if (s <= 80) return "var(--red)";
+  return "var(--critical)";
+}
+function scoreLabel(s) {
+  if (s <= 25) return "安全";
+  if (s <= 45) return "低度警戒";
+  if (s <= 65) return "中度風險";
+  if (s <= 80) return "高度警戒";
+  return "極端危險";
+}
+function positionAdvice(s) {
+  if (s <= 25) return "可積極布局\n加碼至上限";
+  if (s <= 45) return "維持現有\n部位觀察";
+  if (s <= 65) return "建議減碼\n20–30%";
+  if (s <= 80) return "大幅減碼\n至30%以下";
+  return "考慮清倉\n持有現金";
+}
+
+// ══════════════════════════════
+// DATA LOADING
+// ══════════════════════════════
+async function loadData() {
+  const btn  = document.getElementById("refreshBtn");
+  const icon = document.getElementById("refreshIcon");
+  btn.disabled = true;
+  icon.classList.add("spinning");
+
+  try {
+    // Load score
+    const [scoreRes, histRes] = await Promise.all([
+      fetch(SCORE_URL + "?t=" + Date.now()),
+      fetch(HIST_URL  + "?t=" + Date.now()),
+    ]);
+
+    if (scoreRes.ok) {
+      scoreData = await scoreRes.json();
+      renderScore(scoreData);
+      renderAction(scoreData);
+      renderCats(scoreData);
+      renderTaiwan(scoreData);
+    }
+
+    if (histRes.ok) {
+      const hist = await histRes.json();
+      renderHistory(hist);
+    }
+
+    // Also try to load raw market data for news
+    const mktRes = await fetch(DATA_URL + "?t=" + Date.now());
+    if (mktRes.ok) {
+      marketData = await mktRes.json();
+      renderNews(marketData);
+    }
+
+    document.getElementById("updateTime").textContent =
+      new Date().toLocaleTimeString("zh-TW", {hour:"2-digit", minute:"2-digit"});
+
+  } catch(e) {
+    console.warn("載入失敗，使用示範數據:", e);
+    loadDemoData();
+  } finally {
+    btn.disabled = false;
+    icon.classList.remove("spinning");
+  }
+}
+
+// Demo data when data files aren't available yet
+function loadDemoData() {
+  const demo = {
+    score: 58,
+    level: {label:"中度風險", color:"orange", position_advice:"建議減碼 20-30%，提高現金至 30%"},
+    category_scores: {valuation:68, macro:62, credit:45, institution:72, sentiment:55, news:58, taiwan:52},
+    raw_scores: {cape:62, buffett:74, margin_debt:30, yield_curve:68, sahm:38, lei:55, hy_spread:45, vix:28, gold_week:30, copper_1m:35, berkshire_cash:72, cot_net:58, fear_greed:55, aaii_bull:58, news_risk:58},
+    action: {
+      top_risks:["殖利率曲線持續倒掛，衰退時鐘滴答", "Buffett Indicator 172% 市場估值偏貴", "Berkshire現金28.3%創歷史高點", "外資台指期淨空單持續擴張"],
+      us_position:"45–60%（減碼）", tw_position:"40–55%（減碼）", cash_position:"30–40%"
+    },
+    computed_at: new Date().toISOString(),
+  };
+  scoreData = demo;
+  renderScore(demo);
+  renderAction(demo);
+  renderCats(demo);
+  renderTaiwan(demo);
+  renderHistory(null);
+  renderNews(null);
+  document.getElementById("updateTime").textContent = "示範模式";
+}
+
+// ══════════════════════════════
+// RENDER FUNCTIONS
+// ══════════════════════════════
+function renderScore(data) {
+  const s  = data.score;
+  const c  = scoreColor(s);
+  const lb = scoreLabel(s);
+  const pa = positionAdvice(s);
+
+  document.getElementById("scoreNum").textContent = s;
+  document.getElementById("scoreNum").style.color = c;
+  document.getElementById("scoreHero").style.setProperty("--hero-color", c);
+
+  const badge = document.getElementById("scoreBadge");
+  badge.textContent = lb;
+  badge.style.background = c + "22";
+  badge.style.color = c;
+  badge.style.border = `1px solid ${c}55`;
+
+  document.getElementById("positionAdvice").textContent = pa;
+  document.getElementById("positionAdvice").style.color = c;
+
+  const needle = document.getElementById("gaugeNeedle");
+  needle.style.width = s + "%";
+  needle.style.background = c;
+}
+
+function renderAction(data) {
+  const action = data.action || {};
+  const risks  = action.top_risks || [];
+
+  document.getElementById("actionRisks").innerHTML =
+    risks.length ? risks.map(r =>
+      `<div class="risk-item"><div class="risk-dot"></div><div>${r}</div></div>`
+    ).join("") : '<div style="font-size:12px;color:var(--text3)">無重大風險警示</div>';
+
+  document.getElementById("positionGrid").innerHTML = `
+    <div class="position-cell"><div class="pos-label">美股倉位</div><div class="pos-val" style="color:var(--text)">${action.us_position || "—"}</div></div>
+    <div class="position-cell"><div class="pos-label">台股倉位</div><div class="pos-val" style="color:var(--text)">${action.tw_position || "—"}</div></div>
+    <div class="position-cell"><div class="pos-label">現金配置</div><div class="pos-val" style="color:var(--text)">${action.cash_position || "—"}</div></div>
+  `;
+}
+
+function renderCats(data) {
+  const cats_s = data.category_scores || {};
+  const raw_s  = data.raw_scores || {};
+
+  document.getElementById("catGrid").innerHTML = CATS.map(cat => {
+    const s  = cats_s[cat.id] || 40;
+    const c  = scoreColor(s);
+    return `<div class="cat-card" onclick="openDetail('${cat.id}')">
+      <div class="cat-card-head">
+        <div class="cat-icon">${cat.icon}</div>
+        <div class="cat-score-num" style="color:${c}">${s}</div>
+      </div>
+      <div class="cat-name">${cat.name}</div>
+      <div class="cat-desc">${cat.desc}</div>
+      <div class="cat-bar"><div class="cat-bar-fill" style="width:${s}%;background:${c}"></div></div>
+    </div>`;
+  }).join("");
+}
+
+function openDetail(catId) {
+  activeCat = catId;
+  const cat  = CATS.find(c => c.id === catId);
+  const raw  = scoreData?.raw_scores || {};
+  const sheet = document.getElementById("detailSheet");
+  sheet.classList.add("open");
+  document.getElementById("detailTitle").textContent = cat.name + " — 細項指標";
+
+  document.getElementById("indList").innerHTML = cat.inds.map(ind => {
+    const s = raw[ind.id] ?? 40;
+    const c = scoreColor(s);
+    return `<div class="ind-row">
+      <div class="ind-info">
+        <div class="ind-name-s">${ind.name}</div>
+        <div class="ind-danger">${ind.danger}</div>
+      </div>
+      <div class="ind-right">
+        <div class="ind-val" style="color:${c}">${s}</div>
+        <div class="ind-score">/ 100</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  sheet.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+function closeDetail() {
+  document.getElementById("detailSheet").classList.remove("open");
+  activeCat = null;
+}
+
+function renderTaiwan(data) {
+  const tw   = data?.taiwan || {};
+  const cats = data?.category_scores || {};
+  const twS  = cats.taiwan || 52;
+  const c    = scoreColor(twS);
+
+  document.getElementById("twRiskNum").textContent = `${twS}/100`;
+  document.getElementById("twRiskNum").style.color = c;
+
+  // Lamps
+  const lampMap = {"藍燈":0, "黃藍燈":1, "綠燈":2, "黃紅燈":3, "紅燈":4};
+  const activeLamp = lampMap[tw.business_cycle_lamp ?? "綠燈"] ?? 2;
+  for (let i=0; i<5; i++) {
+    const el = document.getElementById("lamp" + i);
+    el.classList.toggle("on", i === activeLamp);
+    if (i === activeLamp) {
+      const lampColors = ["#166534","#1d4ed8","#166534","#854d0e","#991b1b"];
+      el.style.setProperty("--lc", lampColors[i]);
+      el.style.background = i===2?"var(--green-bg)":i===3?"var(--yellow-bg)":i===4?"var(--red-bg)":"var(--blue-bg)";
+    } else {
+      el.style.background = "";
+    }
+  }
+
+  // TW Metrics
+  const metrics = [
+    {name:"M1b/M2 狀態",    val: tw.m1b_m2_status    || "黃金交叉",  sub:"資金行情延續",    color:"var(--green)"},
+    {name:"外資期貨淨部位",  val: tw.foreign_futures_net_lots != null ? (tw.foreign_futures_net_lots > 0 ? "+" : "") + tw.foreign_futures_net_lots.toLocaleString() + "口" : "-8,200口", sub:"台指期淨多空",  color:tw.foreign_futures_net_lots >= 0 ? "var(--green)" : "var(--orange)"},
+    {name:"外資買賣超(5日)", val: tw.foreign_net_buy_m != null ? (tw.foreign_net_buy_m > 0 ? "+" : "") + tw.foreign_net_buy_m + "億" : "-182億", sub:"累計億元",       color:tw.foreign_net_buy_m >= 0 ? "var(--green)" : "var(--orange)"},
+    {name:"融資餘額",        val: tw.margin_balance_bn != null ? tw.margin_balance_bn + "千億" : "持平",  sub:"散戶槓桿水位",  color:"var(--yellow)"},
+    {name:"台幣匯率",        val: tw.usd_twd != null ? tw.usd_twd.toFixed(2) : "32.1",  sub:"USD/TWD",       color:tw.twd_5d_chg > 0 ? "var(--orange)" : "var(--green)"},
+    {name:"費半SOX vs 200MA",val: tw.sox_vs_ma200 != null ? (tw.sox_vs_ma200 > 0 ? "+" : "") + tw.sox_vs_ma200 + "%" : "+12%",  sub:"領先台股電子",   color:tw.sox_vs_ma200 >= 0 ? "var(--green)" : "var(--red)"},
+  ];
+  document.getElementById("twGrid").innerHTML = metrics.map(m =>
+    `<div class="tw-cell">
+      <div class="tw-cell-name">${m.name}</div>
+      <div class="tw-cell-val" style="color:${m.color}">${m.val}</div>
+      <div class="tw-cell-sub">${m.sub}</div>
+    </div>`
+  ).join("");
+}
+
+function renderNews(data) {
+  const news = data?.news || {};
+  const newsRisk = news.news_risk_score || 58;
+  const c = scoreColor(newsRisk);
+  document.getElementById("newsRiskLabel").textContent = `風險指數: ${newsRisk}/100`;
+  document.getElementById("newsRiskLabel").style.color = c;
+
+  const headlines = news.headlines || [
+    {title:"Fed官員暗示降息時程可能推遲，市場重新定價利率路徑", source:"Reuters", sentiment:-0.6, risk_hits:1},
+    {title:"台積電法說上調全年展望，AI需求強勁超預期", source:"CNA", sentiment:0.8, risk_hits:0},
+    {title:"Berkshire現金創歷史新高達2,830億美元", source:"AP", sentiment:-0.4, risk_hits:0},
+    {title:"中東停火談判陷僵局，原油週漲2.1%", source:"Reuters", sentiment:-0.5, risk_hits:1},
+  ];
+
+  document.getElementById("newsList").innerHTML = headlines.slice(0,6).map(n => {
+    const nc = n.sentiment > 0.1 ? "var(--green)" : n.sentiment < -0.3 ? "var(--red)" : "var(--yellow)";
+    const sc = n.sentiment >= 0 ? "+" + n.sentiment.toFixed(1) : n.sentiment.toFixed(1);
+    return `<div class="news-row">
+      <div class="news-bar" style="background:${nc}"></div>
+      <div class="news-body">
+        <div class="news-title-s">${n.title}</div>
+        <div class="news-tags"><span class="news-tag">${n.source}</span>${n.risk_hits > 0 ? '<span class="news-tag" style="color:var(--orange)">風險關鍵詞</span>' : ""}</div>
+      </div>
+      <div class="news-sent" style="color:${nc}">${sc}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderHistory(hist) {
+  const ctx = document.getElementById("histChart").getContext("2d");
+  if (histChart) { histChart.destroy(); histChart = null; }
+
+  let labels, values;
+  if (hist && hist.length > 0) {
+    const recent = hist.slice(-30);
+    labels = recent.map(h => h.date.slice(5));
+    values = recent.map(h => h.score);
+  } else {
+    // Demo
+    labels = Array.from({length:30},(_,i) => {
+      const d=new Date(); d.setDate(d.getDate()-(29-i));
+      return `${d.getMonth()+1}/${d.getDate()}`;
+    });
+    values = [28,30,33,36,40,37,42,45,43,50,47,52,54,57,60,55,58,62,59,63,61,56,53,51,54,57,55,59,61,62];
+  }
+
+  histChart = new Chart(ctx, {
+    type:"line",
+    data:{labels, datasets:[{
+      data:values, borderColor:"#7c6fe0", borderWidth:2,
+      pointRadius:0, fill:true, tension:0.4,
+      backgroundColor:(c2)=>{
+        const g=c2.chart.ctx.createLinearGradient(0,0,0,100);
+        g.addColorStop(0,"rgba(124,111,224,0.4)");
+        g.addColorStop(1,"rgba(124,111,224,0)");
+        return g;
+      }
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`風險: ${c.raw}`}}},
+      scales:{
+        x:{grid:{color:"rgba(255,255,255,0.04)"}, ticks:{color:"#5a5a70",font:{size:9},maxTicksLimit:6}},
+        y:{grid:{color:"rgba(255,255,255,0.04)"}, ticks:{color:"#5a5a70",font:{size:9}}, min:0, max:100,
+          afterBuildTicks:a=>{a.ticks=[0,25,45,65,80,100].map(v=>({value:v}))}
+        }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════
+// NAVIGATION
+// ══════════════════════════════
+function switchPage(page) {
+  currentPage = page;
+  document.querySelectorAll(".section-page").forEach(el => el.classList.remove("active"));
+  document.getElementById("page-" + page).classList.add("active");
+  document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
+  document.getElementById("nav-" + page).classList.add("active");
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+// ══════════════════════════════
+// PWA SERVICE WORKER
+// ══════════════════════════════
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+
+// ══════════════════════════════
+// INIT
+// ══════════════════════════════
+loadData();
+// 每30分鐘自動重新載入
+setInterval(loadData, 30 * 60 * 1000);
+</script>
+</body>
+</html>
