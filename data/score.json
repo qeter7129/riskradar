@@ -1,0 +1,51 @@
+{
+  "score": 58,
+  "multiplier": 1.18,
+  "base_score": 49,
+  "category_scores": {
+    "valuation": 68,
+    "macro": 62,
+    "credit": 45,
+    "institution": 72,
+    "sentiment": 55,
+    "news": 58,
+    "taiwan": 52
+  },
+  "raw_scores": {
+    "cape": 62,
+    "buffett": 74,
+    "margin_debt": 30,
+    "yield_curve": 68,
+    "sahm": 38,
+    "lei": 55,
+    "hy_spread": 45,
+    "vix": 28,
+    "gold_week": 30,
+    "copper_1m": 35,
+    "berkshire_cash": 72,
+    "cot_net": 58,
+    "fear_greed": 55,
+    "aaii_bull": 58,
+    "news_risk": 58,
+    "tw_foreign_futures": 55,
+    "tw_business_lamp": 35,
+    "sox_ma200": 38
+  },
+  "action": {
+    "top_risks": [
+      "殖利率曲線持續倒掛，衰退時鐘滴答作響",
+      "Buffett Indicator 172%，市場整體估值偏貴",
+      "Berkshire 現金水位 28.3% 創歷史新高",
+      "外資台指期淨空單持續擴張，台股承壓"
+    ],
+    "us_position": "45–60%（減碼）",
+    "tw_position": "40–55%（減碼）",
+    "cash_position": "30–40%"
+  },
+  "level": {
+    "label": "中度風險",
+    "color": "orange",
+    "position_advice": "建議減碼 20–30%，提高現金至 30%"
+  },
+  "computed_at": "2026-04-24T05:00:00Z"
+}
