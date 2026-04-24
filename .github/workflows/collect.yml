@@ -1,0 +1,56 @@
+name: RiskRadar 數據更新
+
+on:
+  schedule:
+    # 台灣時間 8:00 / 12:00 / 18:00 / 22:00（UTC 0/4/10/14）
+    - cron: "0 0,4,10,14 * * *"
+  workflow_dispatch:   # 允許手動觸發
+
+jobs:
+  collect-and-score:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: 蒐集市場數據
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python collect_data.py
+
+      - name: 計算風險評分
+        run: python score_engine.py
+
+      - name: 推播到 Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          HOUR=$(date -u +%H)
+          if [ "$HOUR" = "00" ]; then
+            python notify.py --daily
+          else
+            python notify.py
+          fi
+
+      - name: 更新 GitHub Pages 數據
+        run: |
+          git config user.name  "RiskRadar Bot"
+          git config user.email "bot@riskradar.local"
+          git add data/
+          git diff --staged --quiet || git commit -m \
+            "data: 更新市場數據 $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
