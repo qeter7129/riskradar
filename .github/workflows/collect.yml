@@ -35,16 +35,10 @@ jobs:
         run: python score_engine.py
 
       - name: 推播到 Telegram
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          HOUR=$(date -u +%H)
-          if [ "$HOUR" = "00" ]; then
-            python notify.py --daily
-          else
-            python notify.py
-          fi
+  env:
+    TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+    TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+  run: python notify.py --daily
 
       - name: 更新 GitHub Pages 數據
         run: |
